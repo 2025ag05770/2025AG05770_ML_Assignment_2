@@ -28,13 +28,29 @@ def load_models():
     return models, le
 
 
+# names starting with _ are not hashed by streamlit, only the data frame is
+@st.cache_data
+def compare_models(_models, _le, data):
+    x = data[features]
+    y_true = _le.transform(data[TARGET])
+    classes = list(range(len(_le.classes_)))
+    rows = []
+    for name in _models:
+        pred = _models[name].predict(x)
+        prob = _models[name].predict_proba(x)
+        row = {"Model": name}
+        row.update(compute_metrics(y_true, pred, prob, classes))
+        rows.append(row)
+    return pd.DataFrame(rows).set_index("Model")
+
+
 models, le = load_models()
 features = list(models[list(models)[0]].feature_names_in_)
 
 # sidebar
 st.sidebar.header("Settings")
 uploaded = st.sidebar.file_uploader("Upload CSV", type="csv")
-use_test = st.sidebar.checkbox("Use bundled test data", value=False)
+use_test = st.sidebar.checkbox("Use bundled test data", value=True)
 model_name = st.sidebar.selectbox("Model", list(models))
 
 if uploaded is not None:
@@ -129,5 +145,42 @@ st.download_button(
     file_name="predictions.csv",
     mime="text/csv",
 )
+
+
+# model comparison (all five models on the same data)
+st.subheader("Model comparison")
+comp = compare_models(models, le, df)
+
+best = comp["F1"].idxmax()
+st.success(f"Best model by F1: {best} (F1 {comp.loc[best, 'F1']:.4f})")
+
+# best value in each column is highlighted, NaN is shown as n/a
+st.dataframe(
+    comp.style.highlight_max(axis=0, color="#b7e4c7").format("{:.4f}", na_rep="n/a")
+)
+
+# bar chart, y-axis starts near the lowest value so small gaps are visible
+low = np.nanmin(comp.values)
+high = np.nanmax(comp.values)
+y_low = max(0.0, np.floor(low * 20) / 20 - 0.05)
+y_high = min(1.0, high + 0.02)
+
+fig2, ax2 = plt.subplots(figsize=(10, 4.5))
+comp.T.plot(kind="bar", ax=ax2)
+ax2.set_ylim(y_low, y_high)
+ax2.set_ylabel("Score")
+ax2.set_xlabel("")
+ax2.legend(loc="lower left", fontsize=8)
+plt.xticks(rotation=0)
+st.pyplot(fig2)
+plt.close(fig2)
+
+# heatmap, NaN cells are left blank
+fig3, ax3 = plt.subplots(figsize=(8, 3.5))
+sns.heatmap(comp, annot=True, fmt=".3f", cmap="YlGnBu", mask=comp.isna(),
+            vmin=low, vmax=high, ax=ax3)
+ax3.set_ylabel("")
+st.pyplot(fig3)
+plt.close(fig3)
 
 
