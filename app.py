@@ -1,6 +1,10 @@
 import joblib
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import seaborn as sns
 import streamlit as st
+from sklearn.metrics import classification_report, confusion_matrix
 
 from explore_data import TARGET
 from metrics_utils import compute_metrics
@@ -75,3 +79,55 @@ for key in res:
         text = f"{res[key]:.4f}"
     cols[i].metric(key, text)
     i = i + 1
+
+# confusion matrix (all 7 classes are always shown, even if a class is missing in the file)
+st.subheader("Confusion matrix")
+view = st.radio("View", ["Counts", "Row-normalised"], horizontal=True)
+cm = confusion_matrix(y_true, pred, labels=classes)
+if view == "Counts":
+    cm_show = cm
+    fmt = "d"
+else:
+    row_sum = cm.sum(axis=1, keepdims=True)
+    # rows with no samples stay 0 instead of dividing by zero
+    cm_show = np.divide(cm, row_sum, out=np.zeros(cm.shape), where=row_sum > 0)
+    fmt = ".2f"
+fig, ax = plt.subplots(figsize=(7, 5))
+sns.heatmap(cm_show, annot=True, fmt=fmt, cmap="Blues",
+            xticklabels=le.classes_, yticklabels=le.classes_, ax=ax)
+ax.set_xlabel("Predicted")
+ax.set_ylabel("Actual")
+st.pyplot(fig)
+plt.close(fig)
+
+# per-class report
+st.subheader("Classification report")
+rep = classification_report(
+    y_true, pred, labels=classes, target_names=le.classes_,
+    output_dict=True, zero_division=0,
+)
+rep_df = pd.DataFrame(rep).T
+rep_df = rep_df.drop(index="accuracy", errors="ignore")
+rep_df["support"] = rep_df["support"].astype(int)
+st.dataframe(rep_df.round(4))
+
+# weakest class: lowest recall, only among classes that are in the file
+class_rows = rep_df.loc[list(le.classes_)]
+present = class_rows[class_rows["support"] > 0]
+weakest = present["recall"].idxmin()
+st.info(f"Weakest class by recall: {weakest} (recall {present.loc[weakest, 'recall']:.4f}, "
+        f"{present.loc[weakest, 'support']} samples)")
+
+
+# download predictions
+st.subheader("Download predictions")
+out_df = df.copy()
+out_df["Predicted"] = le.inverse_transform(pred)
+st.download_button(
+    "Download predictions CSV",
+    out_df.to_csv(index=False).encode(),
+    file_name="predictions.csv",
+    mime="text/csv",
+)
+
+
