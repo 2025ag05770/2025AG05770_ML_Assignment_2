@@ -2,16 +2,11 @@
 
 A small ML project that classifies dry beans into 7 types from 16 shape measurements, using the UCI Dry Bean Dataset. Five classifiers are trained and compared, and a Streamlit app lets you score any CSV, look at the confusion matrix and compare the models.
 
-## Links
-
-- GitHub repo: https://github.com/2025ag05770/2025AG05770_ML_Assignment_2
-- Streamlit app: https://2025ag05770mlassignment2-tunfwld5btas3hqzbvmhkg.streamlit.app/
-
-## Problem statement
+## a. Problem statement
 
 Given the 16 numeric shape features of a bean (area, perimeter, axis lengths, shape factors and so on), predict which of 7 bean types it is. This is a multi-class classification problem with imbalanced classes.
 
-## Dataset
+## b. Dataset description
 
 UCI Dry Bean Dataset. The training script downloads it from UCI every time it runs, so the raw file is not stored in this repo.
 
@@ -37,74 +32,88 @@ Class balance:
 | BARBUNYA | 1,322 | 9.7% |
 | BOMBAY | 522 | 3.8% |
 
-## Data preparation
+Data preparation:
 
 - 80/20 stratified split with `random_state=42`: 10,888 training rows and 2,723 test rows. The test split has 104 BOMBAY rows.
 - Class names are changed to numbers 0 to 6 with a `LabelEncoder` (saved in `model/`).
 - Features are on very different scales (`Area` is in the tens of thousands, `Solidity` is near 1), so every model is a pipeline of `StandardScaler` followed by the classifier. The scaler is fitted on the training split only.
 - No other cleaning, no feature selection and no hyper-parameter search.
 
-Models and settings:
+## c. GitHub repository link
+
+https://github.com/2025ag05770/2025AG05770_ML_Assignment_2
+
+Live Streamlit app: https://2025ag05770mlassignment2-tunfwld5btas3hqzbvmhkg.streamlit.app/
+
+## d. Models used
+
+Settings of the five models (each one is `StandardScaler` followed by the classifier):
 
 | Model | Settings |
 |---|---|
 | Logistic Regression | `max_iter=2000` |
 | Decision Tree | `max_depth=8`, `min_samples_leaf=5` |
 | KNN | `k=7`, `weights="distance"` |
-| Gaussian Naive Bayes | defaults |
-| SVM (RBF) | `C=10`, `probability=True` |
+| Naive Bayes (Gaussian) | defaults |
+| Support Vector Machine | RBF kernel, `C=10`, `probability=True` (shown as "SVM (RBF)" in the app) |
 
-## Metrics
-
-All metrics are computed on the 2,723 held-out test rows.
+Metrics, all computed on the 2,723 held-out test rows:
 
 - **Accuracy**: share of correct predictions.
 - **AUC**: one-vs-rest, macro average. It is `NaN` if a class is missing from the data being scored.
 - **Precision, Recall, F1**: macro averages, so each of the 7 classes counts equally. `zero_division=0`.
 - **MCC**: Matthews correlation coefficient, which stays honest on imbalanced classes.
 
-## Results
+### Comparison table
 
-| Model | Accuracy | AUC | Precision | Recall | F1 | MCC |
+| ML Model Name | Accuracy | AUC | Precision | Recall | F1 | MCC |
 |---|---|---|---|---|---|---|
 | Logistic Regression | 0.9214 | 0.9948 | 0.9354 | 0.9321 | 0.9335 | 0.9050 |
 | Decision Tree | 0.9023 | 0.9843 | 0.9166 | 0.9130 | 0.9147 | 0.8818 |
 | KNN | 0.9166 | 0.9860 | 0.9318 | 0.9271 | 0.9292 | 0.8992 |
 | Naive Bayes | 0.8979 | 0.9916 | 0.9112 | 0.9092 | 0.9091 | 0.8773 |
-| SVM (RBF) | 0.9243 | 0.9946 | 0.9372 | 0.9350 | 0.9361 | 0.9085 |
+| Support Vector Machine | 0.9243 | 0.9946 | 0.9372 | 0.9350 | 0.9361 | 0.9085 |
 
 I retrained all five models from the same code and got exactly the same numbers as `model/metrics.csv`.
 
-### Per-class recall (test set)
+### Observations on model performance
 
-| Model | BARBUNYA | BOMBAY | CALI | DERMASON | HOROZ | SEKER | SIRA |
+| ML Model Name | Observation about model performance |
+|---|---|
+| Logistic Regression | Very close second: F1 0.9335 against 0.9361 for the best model, and the best AUC (0.9948, with SVM at 0.9946). It trains in 0.29 s. That a plain linear model gets this far suggests the classes are fairly well separated after scaling (I did not test this further). Weakest class is SIRA (recall 0.8805). |
+| Decision Tree | F1 0.9147 and the lowest AUC (0.9843). Its SIRA recall of 0.8273 is the lowest SIRA value of the five models. Trains in 0.14 s. |
+| KNN | Third on F1 (0.9292) and accuracy (0.9166). Training is almost instant (0.01 s) because it only stores the data, so its saved file is the largest, 1.48 MB (it keeps all 10,888 training rows). Weakest class is SIRA (recall 0.8691). |
+| Naive Bayes | Lowest accuracy (0.8979) and F1 (0.9091), but its AUC (0.9916) is third best. Its weak spots are BARBUNYA (recall 0.7962, the lowest value in the whole recall table) and DERMASON (0.8604, also the lowest DERMASON value). It is the only model whose weakest class is not SIRA. Training takes 0.01 s. |
+| Support Vector Machine | Best on accuracy (0.9243), precision (0.9372), recall (0.9350), F1 (0.9361) and MCC (0.9085). It is also the slowest to train: 2.92 s on my machine. Weakest class is SIRA (recall 0.8634). |
+
+Training times are single runs on my machine.
+
+Patterns across all models (per-class recall table below):
+
+- **BOMBAY** has recall 1.0000 for all five models, even though it is only 3.8% of the data. It is the easiest class to separate.
+- **Hardest pair: DERMASON and SIRA.** For every model the largest single confusion is between these two, in one direction or the other (for example 78 DERMASON rows predicted as SIRA by Naive Bayes, 62 SIRA rows predicted as DERMASON by the Decision Tree). The second hardest pair is BARBUNYA predicted as CALI (16 to 40 rows depending on the model).
+- SIRA is the weakest class by recall for four of the five models. Naive Bayes is the exception, where BARBUNYA is weakest.
+
+Per-class recall (test set):
+
+| ML Model Name | BARBUNYA | BOMBAY | CALI | DERMASON | HOROZ | SEKER | SIRA |
 |---|---|---|---|---|---|---|---|
 | Test rows | 265 | 104 | 326 | 709 | 386 | 406 | 527 |
 | Logistic Regression | 0.8906 | 1.0000 | 0.9417 | 0.9083 | 0.9508 | 0.9532 | 0.8805 |
 | Decision Tree | 0.8604 | 1.0000 | 0.9080 | 0.9140 | 0.9430 | 0.9384 | 0.8273 |
 | KNN | 0.8717 | 1.0000 | 0.9417 | 0.9083 | 0.9534 | 0.9458 | 0.8691 |
 | Naive Bayes | 0.7962 | 1.0000 | 0.9233 | 0.8604 | 0.9534 | 0.9433 | 0.8880 |
-| SVM (RBF) | 0.9094 | 1.0000 | 0.9417 | 0.9238 | 0.9560 | 0.9507 | 0.8634 |
+| Support Vector Machine | 0.9094 | 1.0000 | 0.9417 | 0.9238 | 0.9560 | 0.9507 | 0.8634 |
 
-## Observations
+### Overall winner for this dataset
 
-- **SVM (RBF)** is first on accuracy, precision, recall, F1 and MCC. It is also the slowest to train: 2.92 s on my machine, against 0.29 s for Logistic Regression and 0.01 s for KNN and Naive Bayes (one run each).
-- **Logistic Regression** is a very close second (F1 0.9335 against 0.9361) and has the best AUC (0.9948, with SVM at 0.9946). That a plain linear model gets this far suggests the classes are fairly well separated after scaling (I did not test this further).
-- **KNN** is third on F1 (0.9292). Its saved file is the largest, 1.48 MB, because it keeps all 10,888 training rows.
-- **Decision Tree** (F1 0.9147) has the lowest AUC (0.9843). Its SIRA recall of 0.8273 is the lowest SIRA value of the five models.
-- **Naive Bayes** has the lowest accuracy (0.8979) and F1 (0.9091), but its AUC (0.9916) is third best. Its weak spots are BARBUNYA (recall 0.7962, the lowest value in the whole recall table) and DERMASON (0.8604, also the lowest DERMASON value).
-- **BOMBAY** has recall 1.0000 for all five models, even though it is only 3.8% of the data. It is the easiest class to separate.
-- **Hardest pair: DERMASON and SIRA.** For every model the largest single confusion is between these two, in one direction or the other (for example 78 DERMASON rows predicted as SIRA by Naive Bayes, 62 SIRA rows predicted as DERMASON by the Decision Tree). The second hardest pair is BARBUNYA predicted as CALI (16 to 40 rows depending on the model).
-- SIRA is the weakest class by recall for four of the five models. Naive Bayes is the exception, where BARBUNYA is weakest.
+**Support Vector Machine (RBF)** wins on F1 (0.9361), accuracy (0.9243) and MCC (0.9085). Its lead over Logistic Regression is small (0.0026 F1 on 2,723 test rows) and comes from one split, so I would not call the two clearly different. If training speed matters, Logistic Regression is nearly as good and about ten times faster to train in my run.
 
-## Overall winner
-
-**SVM (RBF)** wins on F1 (0.9361), accuracy (0.9243) and MCC (0.9085). Its lead over Logistic Regression is small (0.0026 F1 on 2,723 test rows) and comes from one split, so I would not call the two clearly different. If training speed matters, Logistic Regression is nearly as good and about ten times faster to train in my run.
-
-## App features
+## Streamlit app features
 
 - Use the bundled `test_data.csv` (ticked by default) or upload your own CSV.
 - The CSV needs the 16 feature columns and a `Class` column. Missing columns or unknown class names show an error and stop before any prediction.
+- The app loads the saved models and only predicts. It never retrains on the uploaded data.
 - Choose one of the 5 models and see the six metrics (AUC shows `n/a` if a class is missing from the file).
 - 10-row data preview.
 - Confusion matrix with a Counts / Row-normalised toggle.
@@ -142,7 +151,7 @@ Saved model sizes: Logistic Regression 3.2 KB, Decision Tree 34.9 KB, KNN 1.48 M
 
 ## Reproducibility check
 
-I installed the pinned `requirements.txt` into a fresh virtual environment, ran `python test_metrics.py` (all tests passed) and `python train_models.py`, and started the app. The retrained metrics were identical to the Results table above, the regenerated `test_data.csv` was byte-identical to the one in the repo, and the app started with no exceptions.
+I installed the pinned `requirements.txt` into a fresh virtual environment, ran `python test_metrics.py` (all tests passed) and `python train_models.py`, and started the app. The retrained metrics were identical to the comparison table above, the regenerated `test_data.csv` was byte-identical to the one in the repo, and the app started with no exceptions.
 
 ## How I built it
 
