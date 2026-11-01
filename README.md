@@ -121,6 +121,7 @@ python train_models.py
 python -m streamlit run app.py
 ```
 
+- `requirements.txt` pins the exact versions used (Python 3.12.0): streamlit 1.66.1, scikit-learn 1.9.0, numpy 2.5.2, pandas 3.0.5, matplotlib 3.11.1, seaborn 0.13.2, joblib 1.5.3, openpyxl 3.1.5, certifi 2025.6.15.
 - `python train_models.py` needs internet to download the dataset. It writes the models to `model/` and the test split to `test_data.csv`. The saved files are already in the repo, so you can skip it and start the app directly.
 - Start the app with `streamlit run`, not `python app.py`. Plain `python app.py` has no Streamlit session, so no page is served.
 
@@ -138,6 +139,25 @@ model/             5 pipelines (.joblib), label_encoder.joblib, metrics.csv
 ```
 
 Saved model sizes: Logistic Regression 3.2 KB, Decision Tree 34.9 KB, KNN 1.48 MB, Naive Bayes 4.0 KB, SVM 443 KB.
+
+## Reproducibility check
+
+I installed the pinned `requirements.txt` into a fresh virtual environment, ran `python test_metrics.py` (all tests passed) and `python train_models.py`, and started the app. The retrained metrics were identical to the Results table above, the regenerated `test_data.csv` was byte-identical to the one in the repo, and the app started with no exceptions.
+
+## How I built it
+
+This project was built stage by stage with an AI tutor, one stage per day over 10 days:
+
+1. Project scaffold, requirements and README placeholder.
+2. Data exploration script (shape, dtypes, missing values, duplicates, class balance).
+3. Multi-class metrics helper (`compute_metrics`) with sanity tests.
+4. Training script: stratified split and five scaler + classifier pipelines.
+5. Trained and saved the models, label encoder, `metrics.csv` and the hold-out `test_data.csv`.
+6. Streamlit app, first version: CSV upload, input validation, model selector, six metrics.
+7. Confusion matrix, classification report and predictions download.
+8. Model comparison: table, bar chart and heatmap.
+9. Full README with results, per-class recall and observations.
+10. Final checks: pinned versions, clean-environment rerun and this build log.
 
 ## Known limitations
 
