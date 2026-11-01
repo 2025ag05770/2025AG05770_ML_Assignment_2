@@ -130,7 +130,7 @@ python train_models.py
 python -m streamlit run app.py
 ```
 
-- `requirements.txt` pins the exact versions used (Python 3.12.0): streamlit 1.66.1, scikit-learn 1.9.0, numpy 2.5.2, pandas 3.0.5, matplotlib 3.11.1, seaborn 0.13.2, joblib 1.5.3, openpyxl 3.1.5, certifi 2025.6.15.
+- `requirements.txt` pins the exact versions used (Python 3.12.0): streamlit 1.66.1, scikit-learn 1.9.0, numpy 2.5.2, pandas 3.0.5, matplotlib 3.11.1, seaborn 0.13.2, joblib 1.5.3, openpyxl 3.1.5, certifi 2025.6.15, jinja2 3.1.6 (needed by pandas for the highlighted comparison table).
 - `python train_models.py` needs internet to download the dataset. It writes the models to `model/` and the test split to `test_data.csv`. The saved files are already in the repo, so you can skip it and start the app directly.
 - Start the app with `streamlit run`, not `python app.py`. Plain `python app.py` has no Streamlit session, so no page is served.
 
