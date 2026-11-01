@@ -52,6 +52,9 @@ st.sidebar.header("Settings")
 uploaded = st.sidebar.file_uploader("Upload CSV", type="csv")
 use_test = st.sidebar.checkbox("Use bundled test data", value=True)
 model_name = st.sidebar.selectbox("Model", list(models))
+if model_name is None:
+    st.error("No trained models found.")
+    st.stop()
 
 if uploaded is not None:
     df = pd.read_csv(uploaded)
